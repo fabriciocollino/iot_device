@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hola Mundo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #ffffff;
+            width: 320px;
+            height: 240px;
+            position: absolute;
+            overflow: hidden;
+        }
+
+        .hora {
+            font-family: 'Proxima Nova Cn Lt';
+            color: #00acc8;
+        }
+
+        #horaGrande {
+            font-size: 120px;
+            position: absolute;
+            top: 75px;
+            width: 100%;
+            text-align: center;
+            float: left;
+        }
+
+        #onlineStatus {
+            position: absolute;
+            top: 16px;
+            left: 195px;
+            float: left;
+        }
+
+        #conectionStatus {
+            position: absolute;
+            top: 16px;
+            left: 249px;
+            float: left;
+        }
+
+        .page {
+            /* visibility: hidden;
+            */
+            top: -2000px;
+            opacity: 0;
+            transition: opacity .3s ease 0s, top 0s linear .3s;
+            position: fixed;
+            height: 240px;
+            width: 320px;
+        }
+
+        .show {
+            top: 0;
+            opacity: 1;
+            transition: opacity .1s ease 0s, top 0s linear .1s;
+        }
+
+        #pagEnroll div {
+            left: 5px;
+            width: 150px;
+            text-align: center;
+            font-family: 'Roboto';
+            position: absolute;
+            float: left;
+        }
+
+        #enrollMSG {
+            top: 16px;
+            font-size: 25px;
+            font-weight: bolder;
+            text-align: center;
+            color: #00acc8;
+        }
+
+        #enrollEtapa {
+            top: 100px;
+            font-size: 19px;
+            text-align: center;
+            color: #00acc8;
+        }
+
+        #enrollNombre {
+            top: 160px;
+            height: 48px;
+        }
+
+        #enrollLegajo {
+            top: 208px;
+            height: 48px;
+        }
+
+        #enrollMano {
+            top: 47px;
+            left: 141px;
+            position: absolute;
+            float: left;
+        }
+
+        #pagMensaje {
+            text-align: center;
+            padding-top: 30px;
+        }
+
+        #pagMensaje div {
+            width: 95%;
+            font-family: 'Roboto';
+        }
+
+        #mensajeGrande {
+            font-size: 25px;
+            font-weight: bold;
+            height: 70px;
+        }
+
+        #mensajeChico {
+            height: 48px;
+        }
+
+        .ok {
+            color: #00acc8;
+        }
+
+        .warning {
+            color: #ed9114;
+        }
+
+        .error {
+            color: #ed3947;
+        }
+
+        .middle {
+            display: flex;
+            align-items: center;
+            margin: auto;
+        }
+
+        #identImgs {
+            position: absolute;
+            max-width: 134px;
+            max-height: 134px;
+            top: 23px;
+            left: 23px;
+        }
+
+        #identFoto {
+            border-radius: 50%;
+            max-width: 134px;
+            max-height: 134px;
+        }
+
+        #identOK {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+
+        #identNombre {
+            text-align: center;
+            position: absolute;
+            top: 20px;
+            right: 0;
+            max-width: 160px;
+            width: 160px;
+            height: 110px;
+            font-family: 'Roboto Medium';
+            padding: 5px;
+            font-size: 11vh;
+        }
+
+        #identLegajo {
+            text-align: center;
+            position: absolute;
+            top: 110px;
+            right: 0;
+            max-width: 160px;
+            width: 160px;
+            height: 60px;
+            font-family: 'Roboto Medium';
+            font-size: 12pt;
+        }
+
+        #identLegajo div {
+            width: 100%;
+        }
+
+        #identHoraDiv {
+            position: absolute;
+            right: 0;
+            top: 190px;
+        }
+
+        #identHoraDiv img {
+            position: absolute;
+            right: 0;
+        }
+
+        #identHoraDiv div {
+            right: 0;
+            position: absolute;
+            width: 170px;
+            font-family: 'Roboto Medium';
+            font-size: 34pt;
+            color: #00acc8;
+            text-align: center;
+        }
+
+        #pagEnrollRF div {
+            text-align: center;
+            font-family: 'Roboto';
+            position: absolute;
+            float: left;
+        }
+
+        #pagEnrollRF img {
+            position: absolute;
+            top: 30px;
+            right: 10px;
+        }
+
+        #enrollRFMSG {
+            left: 5px;
+            width: 150px;
+            top: 40px;
+            font-size: 25px;
+            font-weight: bolder;
+            text-align: center;
+            color: #00acc8;
+        }
+
+        #enrollRFNombre {
+            position: absolute;
+            top: 125px;
+            height: 48px;
+            font-size: 26px;
+            width: 100%;
+        }
+
+        #enrollRFLegajo {
+            position: absolute;
+            top: 180px;
+            height: 48px;
+            font-size: 20px;
+            width: 100%;
+        }
+
+        #pagFingerDetected {
+            text-align: center  ;
+        }
+
+        #pagFingerDetected div {
+            font-family: 'Roboto';
+            margin-top: 10px;
+            font-size: 25px;
+            font-weight: bolder;
+            text-align: center;
+        }
+
+
+        #pagButtonDetected {
+            text-align: center  ;
+            padding-top: 30px;
+        }
+
+        #pagButtonDetected div {
+            font-family: 'Roboto';
+            margin-top: 10px;
+            font-size: 25px;
+            font-weight: bolder;
+            text-align: center;
+        }
+
+
+        #pagInitialSetup {
+            text-align: center;
+            padding-top: 30px;
+        }
+
+        #pagInitialSetup div {
+            width: 95%;
+            font-family: 'Roboto';
+        }
+
+        #setupURL {
+            font-size: 25px;
+            font-weight: bold;
+            height: 70px;
+        }
+
+        #setupCodigo{
+            padding-top: 10px;
+            font-size: 45px;
+            font-weight: bold;
+        }
+    </style>
+    <script src="utils.js"></script>
+    <script src="principal.js"></script>
+</head>
+<body onload="startApp();">
+
+<div id="pagPrincipal" class="page show">
+    <div id="horaGrande" class="hora">
+        --:--
+    </div>
+    <img id="onlineStatus" src="img/offline.png">
+    <img id="conectionStatus" src="img/status-server-off.png">
+</div>
+
+<div id="pagEnroll" class="page">
+    <div id="enrollMSG">
+        Ingrese su<br>huella
+    </div>
+    <div id="enrollEtapa">
+        <small>Etapa:</small> <span id="etapaNumero">1</span>/<span id="etapaMax">4</span>
+    </div>
+    <img id="enrollMano" src="img/enroll/mano.png">
+    <div id="enrollNombre"></div>
+    <div id="enrollLegajo"></div>
+</div>
+
+<div id="pagEnrollRF" class="page">
+    <div id="enrollRFMSG">
+        Pase su credencial
+    </div>
+    <img src="img/card.png">
+    <div id="enrollRFNombre"></div>
+    <div id="enrollRFLegajo"></div>
+</div>
+
+<div id="pagMensaje" class="page ">
+    <img id="mensajeImg" src="img/mensaje/ok.png">
+    <div id="mensajeGrande" class="middle">
+        <div class="ok">
+            No pude capturar eso
+        </div>
+    </div>
+    <div id="mensajeChico" class="middle">
+        <div>
+            Prueba nuevamente por favor.
+        </div>
+    </div>
+</div>
+
+
+<div id="pagFingerDetected" class="page">
+    <div>Leyendo Huella<br>no retire su dedo del lector</div>
+    <img src="img/reloj.gif" alt="">
+</div>
+
+
+<div id="pagButtonDetected" class="page">
+    <img src="img/cargando.gif" alt="" id="buttonPressedGif">
+</div>
+
+
+
+<div id="pagInitialSetup" class="page ">
+    <img id="setupImg" src="img/status-server-on.png">
+    <div id="setupURL" class="middle">
+        <div class="ok">
+
+        </div>
+    </div>
+    <div id="setupCodigo" class="middle">
+        <div>
+            000 000
+        </div>
+    </div>
+</div>
+
+
+<div id="pagIdentificado" class="page">
+    <div id="identImgs">
+        <img id="identFoto" src="img/user.png" onerror="if (this.src != 'img/user.png') this.src = 'img/user.png';">
+        <img id="identOK" src="img/registered-check.png">
+    </div>
+
+    <div id="identNombre" class="middle textFill">
+        <div>
+        </div>
+    </div>
+    <div id="identLegajo" class="middle">
+        <div>
+        </div>
+    </div>
+    <div id="identHoraDiv" class="middle">
+        <img src="img/registered-time-frame.png" alt="">
+        <div id="identHora">
+            09:45
+        </div>
+    </div>
+</div>
+
+<div id="pagImg" class="page ">
+    <img id="pagImgIMG">
+</div>
+
+</body>
+</html>

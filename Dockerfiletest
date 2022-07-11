@@ -1,0 +1,699 @@
+FROM balenalib/raspberrypi3-node:8.16.1
+
+ENV INITSYSTEM=on
+# solo para probar en local
+COPY qemu-arm /qemu-wrapper
+
+# Install apt deps
+RUN sed -i '/jessie-updates/{s/^/#/}' /etc/apt/sources.list
+
+
+
+RUN apt-get update && \
+    apt-get install -yq --no-install-recommends python \
+    python-dev \
+    python-dbus \
+    python-pip \
+  xorg \
+  xinit \
+  libgtk-3-0 \
+  libudev-dev \
+  libxss1 \
+  libgconf-2-4 \
+  libasound2 \
+  sqlite3 \
+  openssh-client \
+  openssh-sftp-server \
+  openssh-server \
+  ntpdate \
+  hostapd \
+  dnsmasq \
+  iproute2 \
+  iw \
+  libdbus-1-dev \
+  libexpat1-dev \
+  rfkill \
+  gifsicle \
+  libusb-1.0-0-dev \
+  libnss3 \
+  libxv-dev \
+  libtool \
+  ## build tools
+ build-essential \
+  automake \
+ cmake \
+  ## end build tools
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+
+
+
+# Set Xorg
+# TODO: Ver si se puede utilizar la aceleradora para otpimizar el renderizado.
+
+RUN echo "#!/bin/sh\n\nexec /usr/bin/X -s 0 dpms -nocursor -nolisten tcp "$@"" > /etc/X11/xinit/xserverrc && \
+    mkdir -p /etc/X11/xorg.conf && \
+    echo 'Section "ServerLayout"\n\
+              Identifier "ServerLayout0"\n\
+              Option "StandbyTime" "0"\n\
+              Option "SuspendTime" "0"\n\
+              Option "OffTime"     "0"\n\
+              Option "BlankTime"   "0"\n\
+          EndSection' \
+    >> /etc/X11/xorg.conf/10-monitor.conf
+
+#no se porque la ultima linea...  http://forum.freetronics.com/viewtopic.php?t=5943
+
+# Clave SSH para
+RUN mkdir -p /root/.ssh && \
+    echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDgLHSOa0OuZVkOWzUkKmYlrL6IOXNV4v8WhP/tMCEPNXIgzaQUYuUMeS8cKr7ntuOVEdUXIq63KqfKZ30g5qFQUN6ACTsHqcnLIlpnqmlt7LLj014H/Z1Mt4nU72bjc1UqOywSoPv/GDx/K/yS68om2n4M8kJ8bIgMSPf/RhMCiV2u8RERrYNLXf3kYWrR3bVyBpFjN46hJkzvFAWPQFkKWgSKgUzDefDon23imrXlACqo/f13CB4Wq9QMDAG9IxHAdFK3fzejcoPR1YJZoFg+oIHfbdrm8jIdz+/4imrabA9meakV80/Ss9j4EHWcJKhOdbbputHjxtdKsg0qKAf7 martin@Tachikoma" > /root/.ssh/authorized_keys && \
+    chmod 700 /root/.ssh && \
+    chmod 600 /root/.ssh/authorized_keys
+
+##################################################################
+# INSTALO Modulo AP
+##################################################################
+
+ENV DEVICE_TYPE=raspberrypi3
+
+# Move package to filesystem
+RUN mkdir -p /ap/
+WORKDIR /ap
+COPY resin-wifi-connect/ /ap/
+
+# NPM i app
+RUN JOBS=MAX  && \
+    npm install --unsafe-perm --production  && \
+    npm cache clean --force && rm -rf /tmp/* && \
+    ./node_modules/coffee -c ./src
+
+
+##################################################################
+# Instalo Aplicacion enPunto
+##################################################################
+
+RUN mkdir -p /app/
+WORKDIR /app
+# Set npm
+ENV npm_config_target 2.0.5
+ENV npm_config_arch arm
+ENV npm_config_target_arch arm
+ENV npm_config_disturl https://atom.io/download/electron
+ENV npm_config_runtime electron
+ENV npm_config_build_from_source true
+
+# Move package to filesystem
+COPY ./package.json /app/
+
+# NPM i app && NPM rebuild node native modules after electron is installed.
+RUN JOBS=MAX npm install --unsafe-perm --production && npm cache clean --force && rm -rf /tmp/* && ./node_modules/.bin/electron-rebuild
+
+
+##################################################################
+# Instalo dpreader
+##################################################################
+
+COPY dpreader/ /temp
+WORKDIR /temp
+
+## production dpreader
+RUN tar xf digitalPersona.tar.gz && \
+    cp -r lib /usr/ && \
+    cp -r include /usr/ && \
+    cp dpreader_1_10000 /usr/bin/dpreader_1_10000 && \
+    cp dpreader_1_1000 /usr/bin/dpreader_1_1000 && \
+    cp dpreader_1_100 /usr/bin/dpreader_1_100 && \
+    chmod +x /usr/bin/dpreader_1_10000  && \
+    chmod +x /usr/bin/dpreader_1_1000  && \
+    chmod +x /usr/bin/dpreader_1_100
+
+# Move app to filesystem
+RUN mkdir -p /root/.fonts
+COPY ./fonts/* /root/.fonts/
+COPY . /app
+
+RUN chmod 750 /app/start.sh && \
+    cd /app && rm -rf dpreader
+
+# Start app
+CMD ["/app/start.sh"]
+.///////
+
+
+
+
+acl/now 2.2.52-2 armhf [installed,local]
+adduser/now 3.113+nmu3 all [installed,local]
+adwaita-icon-theme/now 3.14.0-2 all [installed,local]
+apt/now 1.0.9.8.4 armhf [installed,local]
+autoconf/now 2.69-8 all [installed,local]
+autotools-dev/now 20140911.1 all [installed,local]
+base-files/now 8+deb8u11 armhf [installed,local]
+base-passwd/now 3.5.37 armhf [installed,local]
+bash/now 4.3-11+deb8u1 armhf [installed,local]
+binutils/now 2.25-5+deb8u1 armhf [installed,local]
+bsdmainutils/now 9.0.6 armhf [installed,local]
+bsdutils/now 1:2.25.2-6 armhf [installed,local]
+build-essential/now 11.7 armhf [installed,local]
+bzip2/now 1.0.6-7+b3 armhf [installed,local]
+bzr/now 2.6.0+bzr6595-6+deb8u1 all [installed,local]
+ca-certificates/now 20141019+deb8u4 all [installed,local]
+comerr-dev/now 2.1-1.43.3-1~bpo8+1 armhf [installed,local]
+coreutils/now 8.23-4 armhf [installed,local]
+cpp/now 4:4.9.2-2 armhf [installed,local]
+cpp-4.9/now 4.9.2-10+deb8u1 armhf [installed,local]
+curl/now 7.38.0-4+deb8u11 armhf [installed,local]
+dash/now 0.5.7-4+b1 armhf [installed,local]
+dconf-gsettings-backend/now 0.22.0-1 armhf [installed,local]
+dconf-service/now 0.22.0-1 armhf [installed,local]
+debconf/now 1.5.56+deb8u1 all [installed,local]
+debconf-i18n/now 1.5.56+deb8u1 all [installed,local]
+debian-archive-keyring/now 2017.5~deb8u1 all [installed,local]
+debianutils/now 4.4+b1 armhf [installed,local]
+device-tree-compiler/now 1.4.1-1+rpi1 armhf [installed,local]
+diffutils/now 1:3.3-1+b1 armhf [installed,local]
+dirmngr/now 1.1.1-5 armhf [installed,local]
+dmsetup/now 2:1.02.90-2.2+deb8u1 armhf [installed,local]
+dnsmasq/now 2.72-3+deb8u4 all [installed,local]
+dnsmasq-base/now 2.72-3+deb8u4 armhf [installed,local]
+dpkg/now 1.17.27 armhf [installed,local]
+dpkg-dev/now 1.17.27 all [installed,local]
+e2fslibs/now 1.42.12-2+b1 armhf [installed,local]
+e2fsprogs/now 1.42.12-2+b1 armhf [installed,local]
+file/now 1:5.22+15-2+deb8u5 armhf [installed,local]
+findutils/now 4.4.2-9+b1 armhf [installed,local]
+fontconfig/now 2.11.0-6.3+deb8u1 armhf [installed,local]
+fontconfig-config/now 2.11.0-6.3+deb8u1 all [installed,local]
+fonts-dejavu-core/now 2.34-1 all [installed,local]
+g++/now 4:4.9.2-2 armhf [installed,local]
+g++-4.9/now 4.9.2-10+deb8u1 armhf [installed,local]
+gcc/now 4:4.9.2-2 armhf [installed,local]
+gcc-4.8-base/now 4.8.4-1 armhf [installed,local]
+gcc-4.9/now 4.9.2-10+deb8u1 armhf [installed,local]
+gcc-4.9-base/now 4.9.2-10+deb8u1 armhf [installed,local]
+gconf2-common/now 3.2.6-3 all [installed,local]
+gifsicle/now 1.86-1+deb8u1 armhf [installed,local]
+gir1.2-freedesktop/now 1.42.0-2.2 armhf [installed,local]
+gir1.2-gdkpixbuf-2.0/now 2.31.1-2+deb8u7 armhf [installed,local]
+gir1.2-glib-2.0/now 1.42.0-2.2 armhf [installed,local]
+gir1.2-rsvg-2.0/now 2.40.5-1+deb8u2 armhf [installed,local]
+git/now 1:2.1.4-2.1+deb8u6 armhf [installed,local]
+git-man/now 1:2.1.4-2.1+deb8u6 all [installed,local]
+glib-networking/now 2.42.0-2 armhf [installed,local]
+glib-networking-common/now 2.42.0-2 all [installed,local]
+glib-networking-services/now 2.42.0-2 armhf [installed,local]
+gnupg/now 1.4.18-7+deb8u5 armhf [installed,local]
+gpgv/now 1.4.18-7+deb8u5 armhf [installed,local]
+grep/now 2.20-4.1 armhf [installed,local]
+groff-base/now 1.22.2-8 armhf [installed,local]
+gsettings-desktop-schemas/now 3.14.1-1 all [installed,local]
+gzip/now 1.6-4 armhf [installed,local]
+hicolor-icon-theme/now 0.13-1 all [installed,local]
+hostapd/now 1:2.3-1+deb8u7 armhf [installed,local]
+hostname/now 3.15 armhf [installed,local]
+i2c-tools/now 3.1.1+svn-2 armhf [installed,local]
+ifupdown/now 0.7.53.1 armhf [installed,local]
+imagemagick/now 8:6.8.9.9-5+deb8u13 armhf [installed,local]
+imagemagick-6.q16/now 8:6.8.9.9-5+deb8u13 armhf [installed,local]
+imagemagick-common/now 8:6.8.9.9-5+deb8u13 all [installed,local]
+init/now 1.22 armhf [installed,local]
+init-system-helpers/now 1.22 all [installed,local]
+initscripts/now 2.88dsf-59 armhf [installed,local]
+insserv/now 1.14.0-5 armhf [installed,local]
+iproute/now 1:3.16.0-2 all [installed,local]
+iproute2/now 3.16.0-2 armhf [installed,local]
+iputils-ping/now 3:20121221-5+b2 armhf [installed,local]
+iw/now 3.17-1 armhf [installed,local]
+keyboard-configuration/now 1.123 all [installed,local]
+kmod/now 18-3 armhf [installed,local]
+krb5-multidev/now 1.12.1+dfsg-19+deb8u4 armhf [installed,local]
+less/now 458-3 armhf [installed,local]
+libacl1/now 2.2.52-2 armhf [installed,local]
+libapr1/now 1.5.1-3 armhf [installed,local]
+libaprutil1/now 1.5.4-1 armhf [installed,local]
+libapt-pkg4.12/now 1.0.9.8.4 armhf [installed,local]
+libasan1/now 4.9.2-10+deb8u1 armhf [installed,local]
+libasound2/now 1.0.28-1+rpi3 armhf [installed,local]
+libasound2-data/now 1.0.28-1+rpi3 all [installed,local]
+libassuan0/now 2.1.2-2 armhf [installed,local]
+libatk-bridge2.0-0/now 2.14.0-2 armhf [installed,local]
+libatk1.0-0/now 2.14.0-1 armhf [installed,local]
+libatk1.0-data/now 2.14.0-1 all [installed,local]
+libatomic1/now 4.9.2-10+deb8u1 armhf [installed,local]
+libatspi2.0-0/now 2.14.0-1 armhf [installed,local]
+libattr1/now 1:2.4.47-2 armhf [installed,local]
+libaudit-common/now 1:2.4-1 all [installed,local]
+libaudit1/now 1:2.4-1+b1 armhf [installed,local]
+libavahi-client3/now 0.6.31-5 armhf [installed,local]
+libavahi-common-data/now 0.6.31-5 armhf [installed,local]
+libavahi-common3/now 0.6.31-5 armhf [installed,local]
+libblkid1/now 2.25.2-6 armhf [installed,local]
+libbsd0/now 0.7.0-2 armhf [installed,local]
+libbz2-1.0/now 1.0.6-7+b3 armhf [installed,local]
+libbz2-dev/now 1.0.6-7+b3 armhf [installed,local]
+libc-bin/now 2.19-18+deb8u10 armhf [installed,local]
+libc-dev-bin/now 2.19-18+deb8u10 armhf [installed,local]
+libc6/now 2.19-18+deb8u10 armhf [installed,local]
+libc6-dev/now 2.19-18+deb8u10 armhf [installed,local]
+libcairo-gobject2/now 1.14.0-2.1+deb8u2+rpi1 armhf [installed,local]
+libcairo-script-interpreter2/now 1.14.0-2.1+deb8u2+rpi1 armhf [installed,local]
+libcairo2/now 1.14.0-2.1+deb8u2+rpi1 armhf [installed,local]
+libcairo2-dev/now 1.14.0-2.1+deb8u2+rpi1 armhf [installed,local]
+libcap2/now 1:2.24-8 armhf [installed,local]
+libcap2-bin/now 1:2.24-8 armhf [installed,local]
+libcdt5/now 2.38.0-7 armhf [installed,local]
+libcgraph6/now 2.38.0-7 armhf [installed,local]
+libcloog-isl4/now 0.18.2-1+b2 armhf [installed,local]
+libcolord2/now 1.2.1-1+b2 armhf [installed,local]
+libcomerr2/now 1.43.3-1~bpo8+1 armhf [installed,local]
+libcroco3/now 0.6.8-3+b1 armhf [installed,local]
+libcryptsetup4/now 2:1.6.6-5 armhf [installed,local]
+libcups2/now 1.7.5-11+deb8u4 armhf [installed,local]
+libcurl3/now 7.38.0-4+deb8u11 armhf [installed,local]
+libcurl3-gnutls/now 7.38.0-4+deb8u11 armhf [installed,local]
+libcurl4-openssl-dev/now 7.38.0-4+deb8u11 armhf [installed,local]
+libdatrie1/now 0.2.8-1 armhf [installed,local]
+libdb5.3/now 5.3.28-9+deb8u1 armhf [installed,local]
+libdbus-1-3/now 1.8.22-0+deb8u1 armhf [installed,local]
+libdbus-1-dev/now 1.8.22-0+deb8u1 armhf [installed,local]
+libdbus-glib-1-2/now 0.102-1 armhf [installed,local]
+libdconf1/now 0.22.0-1 armhf [installed,local]
+libdebconfclient0/now 0.192 armhf [installed,local]
+libdevmapper1.02.1/now 2:1.02.90-2.2+deb8u1 armhf [installed,local]
+libdjvulibre-dev/now 3.5.25.4-4+b1 armhf [installed,local]
+libdjvulibre-text/now 3.5.25.4-4 all [installed,local]
+libdjvulibre21/now 3.5.25.4-4+b1 armhf [installed,local]
+libdpkg-perl/now 1.17.27 all [installed,local]
+libdrm-amdgpu1/now 2.4.71-1+rpi1 armhf [installed,local]
+libdrm-freedreno1/now 2.4.71-1+rpi1 armhf [installed,local]
+libdrm-nouveau2/now 2.4.71-1+rpi1 armhf [installed,local]
+libdrm-radeon1/now 2.4.71-1+rpi1 armhf [installed,local]
+libdrm2/now 2.4.71-1+rpi1 armhf [installed,local]
+libedit2/now 3.1-20140620-2 armhf [installed,local]
+libegl1-mesa/now 13.0.0-1+rpi1 armhf [installed,local]
+libelf1/now 0.159-4.2+deb8u1 armhf [installed,local]
+libelfg0/now 0.8.13-5 armhf [installed,local]
+libepoxy0/now 1.2-1 armhf [installed,local]
+liberror-perl/now 0.17-1.1 all [installed,local]
+libevdev2/now 1.3+dfsg-1 armhf [installed,local]
+libevent-2.0-5/now 2.0.21-stable-2+deb8u1 armhf [installed,local]
+libevent-core-2.0-5/now 2.0.21-stable-2+deb8u1 armhf [installed,local]
+libevent-dev/now 2.0.21-stable-2+deb8u1 armhf [installed,local]
+libevent-extra-2.0-5/now 2.0.21-stable-2+deb8u1 armhf [installed,local]
+libevent-openssl-2.0-5/now 2.0.21-stable-2+deb8u1 armhf [installed,local]
+libevent-pthreads-2.0-5/now 2.0.21-stable-2+deb8u1 armhf [installed,local]
+libexif-dev/now 0.6.21-2 armhf [installed,local]
+libexif12/now 0.6.21-2 armhf [installed,local]
+libexpat1/now 2.1.0-6+deb8u4 armhf [installed,local]
+libexpat1-dev/now 2.1.0-6+deb8u4 armhf [installed,local]
+libffi-dev/now 3.1-2+deb8u1 armhf [installed,local]
+libffi6/now 3.1-2+deb8u1 armhf [installed,local]
+libfftw3-double3/now 3.3.4-2+rvt armhf [installed,local]
+libfontconfig1/now 2.11.0-6.3+deb8u1 armhf [installed,local]
+libfontconfig1-dev/now 2.11.0-6.3+deb8u1 armhf [installed,local]
+libfontenc1/now 1:1.1.2-1+b2 armhf [installed,local]
+libfreetype6/now 2.6-2rpi1rpi1g armhf [installed,local]
+libfreetype6-dev/now 2.6-2rpi1rpi1g armhf [installed,local]
+libgbm1/now 13.0.0-1+rpi1 armhf [installed,local]
+libgcc-4.9-dev/now 4.9.2-10+deb8u1 armhf [installed,local]
+libgcc1/now 1:4.9.2-10+deb8u1 armhf [installed,local]
+libgconf-2-4/now 3.2.6-3 armhf [installed,local]
+libgcrypt20/now 1.6.3-2+deb8u4 armhf [installed,local]
+libgd3/now 2.1.0-5+deb8u11 armhf [installed,local]
+libgdbm3/now 1.8.3-13.1 armhf [installed,local]
+libgdk-pixbuf2.0-0/now 2.31.1-2+deb8u7 armhf [installed,local]
+libgdk-pixbuf2.0-common/now 2.31.1-2+deb8u7 all [installed,local]
+libgdk-pixbuf2.0-dev/now 2.31.1-2+deb8u7 armhf [installed,local]
+libgirepository-1.0-1/now 1.42.0-2.2 armhf [installed,local]
+libgl1-mesa-dri/now 13.0.0-1+rpi1 armhf [installed,local]
+libgl1-mesa-glx/now 13.0.0-1+rpi1 armhf [installed,local]
+libglapi-mesa/now 13.0.0-1+rpi1 armhf [installed,local]
+libglib2.0-0/now 2.42.1-1+b1 armhf [installed,local]
+libglib2.0-bin/now 2.42.1-1+b1 armhf [installed,local]
+libglib2.0-data/now 2.42.1-1 all [installed,local]
+libglib2.0-dev/now 2.42.1-1+b1 armhf [installed,local]
+libglu1-mesa/now 9.0.0-2 armhf [installed,local]
+libgmp10/now 2:6.0.0+dfsg-6 armhf [installed,local]
+libgnutls-deb0-28/now 3.3.8-6+deb8u7 armhf [installed,local]
+libgnutls-openssl27/now 3.3.8-6+deb8u7 armhf [installed,local]
+libgomp1/now 4.9.2-10+deb8u1 armhf [installed,local]
+libgpg-error0/now 1.17-3 armhf [installed,local]
+libgraphite2-3/now 1.3.10-1~deb8u1 armhf [installed,local]
+libgraphviz-dev/now 2.38.0-7 armhf [installed,local]
+libgssapi-krb5-2/now 1.12.1+dfsg-19+deb8u4 armhf [installed,local]
+libgssrpc4/now 1.12.1+dfsg-19+deb8u4 armhf [installed,local]
+libgtk-3-0/now 3.14.5-1+deb8u1rpi1rpi1g armhf [installed,local]
+libgtk-3-bin/now 3.14.5-1+deb8u1rpi1rpi1g armhf [installed,local]
+libgtk-3-common/now 3.14.5-1+deb8u1rpi1rpi1g all [installed,local]
+libgudev-1.0-0/now 215-17+deb8u13 armhf [installed,local]
+libgvc6/now 2.38.0-7 armhf [installed,local]
+libgvpr2/now 2.38.0-7 armhf [installed,local]
+libharfbuzz0b/now 0.9.35-2 armhf [installed,local]
+libhogweed2/now 2.7.1-5+deb8u2 armhf [installed,local]
+libice-dev/now 2:1.0.9-1+b1 armhf [installed,local]
+libice6/now 2:1.0.9-1+b1 armhf [installed,local]
+libicu52/now 52.1-8+deb8u7 armhf [installed,local]
+libidn11/now 1.29-1+deb8u2 armhf [installed,local]
+libilmbase-dev/now 1.0.1-6.1 armhf [installed,local]
+libilmbase6/now 1.0.1-6.1 armhf [installed,local]
+libinput-bin/now 1.5.0-1 armhf [installed,local]
+libinput10/now 1.5.0-1 armhf [installed,local]
+libisl10/now 0.12.2-2 armhf [installed,local]
+libjasper-dev/now 1.900.1-debian1-2.4+deb8u3 armhf [installed,local]
+libjasper1/now 1.900.1-debian1-2.4+deb8u3 armhf [installed,local]
+libjbig-dev/now 2.1-3.1 armhf [installed,local]
+libjbig0/now 2.1-3.1 armhf [installed,local]
+libjpeg-dev/now 1:1.3.1-12 all [installed,local]
+libjpeg62-turbo/now 1:1.3.1-12 armhf [installed,local]
+libjpeg62-turbo-dev/now 1:1.3.1-12 armhf [installed,local]
+libjs-excanvas/now 0.r3-3 all [installed,local]
+libjs-jquery/now 1.7.2+dfsg-3.2 all [installed,local]
+libjson-glib-1.0-0/now 1.0.2-1 armhf [installed,local]
+libjson-glib-1.0-common/now 1.0.2-1 all [installed,local]
+libk5crypto3/now 1.12.1+dfsg-19+deb8u4 armhf [installed,local]
+libkadm5clnt-mit9/now 1.12.1+dfsg-19+deb8u4 armhf [installed,local]
+libkadm5srv-mit9/now 1.12.1+dfsg-19+deb8u4 armhf [installed,local]
+libkdb5-7/now 1.12.1+dfsg-19+deb8u4 armhf [installed,local]
+libkeyutils1/now 1.5.9-5+b1 armhf [installed,local]
+libkmod2/now 18-3 armhf [installed,local]
+libkrb5-3/now 1.12.1+dfsg-19+deb8u4 armhf [installed,local]
+libkrb5support0/now 1.12.1+dfsg-19+deb8u4 armhf [installed,local]
+libksba8/now 1.3.2-1+deb8u1 armhf [installed,local]
+liblcms2-2/now 2.6-3+deb8u1 armhf [installed,local]
+liblcms2-dev/now 2.6-3+deb8u1 armhf [installed,local]
+libldap-2.4-2/now 2.4.40+dfsg-1+deb8u4 armhf [installed,local]
+libllvm3.9/now 1:3.9-4 armhf [installed,local]
+liblocale-gettext-perl/now 1.05-8+b1 armhf [installed,local]
+liblqr-1-0/now 0.4.2-2 armhf [installed,local]
+liblqr-1-0-dev/now 0.4.2-2 armhf [installed,local]
+libltdl-dev/now 2.4.2-1.11 armhf [installed,local]
+libltdl7/now 2.4.2-1.11 armhf [installed,local]
+liblzma-dev/now 5.1.1alpha+20120614-2+b3 armhf [installed,local]
+liblzma5/now 5.1.1alpha+20120614-2+b3 armhf [installed,local]
+liblzo2-2/now 2.08-1.2 armhf [installed,local]
+libmagic1/now 1:5.22+15-2+deb8u5 armhf [installed,local]
+libmagickcore-6-arch-config/now 8:6.8.9.9-5+deb8u13 armhf [installed,local]
+libmagickcore-6-headers/now 8:6.8.9.9-5+deb8u13 all [installed,local]
+libmagickcore-6.q16-2/now 8:6.8.9.9-5+deb8u13 armhf [installed,local]
+libmagickcore-6.q16-2-extra/now 8:6.8.9.9-5+deb8u13 armhf [installed,local]
+libmagickcore-6.q16-dev/now 8:6.8.9.9-5+deb8u13 armhf [installed,local]
+libmagickcore-dev/now 8:6.8.9.9-5+deb8u13 all [installed,local]
+libmagickwand-6-headers/now 8:6.8.9.9-5+deb8u13 all [installed,local]
+libmagickwand-6.q16-2/now 8:6.8.9.9-5+deb8u13 armhf [installed,local]
+libmagickwand-6.q16-dev/now 8:6.8.9.9-5+deb8u13 armhf [installed,local]
+libmagickwand-dev/now 8:6.8.9.9-5+deb8u13 all [installed,local]
+libmnl0/now 1.0.3-5 armhf [installed,local]
+libmount1/now 2.25.2-6 armhf [installed,local]
+libmpc3/now 1.0.2-1 armhf [installed,local]
+libmpfr4/now 3.1.2-2 armhf [installed,local]
+libmtdev1/now 1.1.5-1 armhf [installed,local]
+libmysqlclient-dev/now 5.5.60-0+deb8u1 armhf [installed,local]
+libmysqlclient18/now 5.5.60-0+deb8u1 armhf [installed,local]
+libncurses5/now 5.9+20140913-1+deb8u3 armhf [installed,local]
+libncurses5-dev/now 5.9+20140913-1+deb8u3 armhf [installed,local]
+libncursesw5/now 5.9+20140913-1+deb8u3 armhf [installed,local]
+libnetfilter-conntrack3/now 1.0.4-1 armhf [installed,local]
+libnettle4/now 2.7.1-5+deb8u2 armhf [installed,local]
+libnfnetlink0/now 1.0.1-3 armhf [installed,local]
+libnl-3-200/now 3.2.24-2 armhf [installed,local]
+libnl-genl-3-200/now 3.2.24-2 armhf [installed,local]
+libnl-route-3-200/now 3.2.24-2 armhf [installed,local]
+libnspr4/now 2:4.12-1+debu8u1 armhf [installed,local]
+libnss3/now 2:3.26-1+debu8u4 armhf [installed,local]
+libopenexr-dev/now 1.6.1-8 armhf [installed,local]
+libopenexr6/now 1.6.1-8 armhf [installed,local]
+libp11-kit0/now 0.20.7-1 armhf [installed,local]
+libpam-modules/now 1.1.8-3.1+deb8u2+b1 armhf [installed,local]
+libpam-modules-bin/now 1.1.8-3.1+deb8u2+b1 armhf [installed,local]
+libpam-runtime/now 1.1.8-3.1+deb8u2 all [installed,local]
+libpam0g/now 1.1.8-3.1+deb8u2+b1 armhf [installed,local]
+libpango-1.0-0/now 1.36.8-3 armhf [installed,local]
+libpangocairo-1.0-0/now 1.36.8-3 armhf [installed,local]
+libpangoft2-1.0-0/now 1.36.8-3 armhf [installed,local]
+libpathplan4/now 2.38.0-7 armhf [installed,local]
+libpciaccess0/now 0.13.2-3+b1 armhf [installed,local]
+libpcre3/now 2:8.35-3.3+deb8u4 armhf [installed,local]
+libpcre3-dev/now 2:8.35-3.3+deb8u4 armhf [installed,local]
+libpcrecpp0/now 2:8.35-3.3+deb8u4 armhf [installed,local]
+libpipeline1/now 1.4.0-1 armhf [installed,local]
+libpixman-1-0/now 0.33.3+git20151011-7de61d8-rpi1 armhf [installed,local]
+libpixman-1-dev/now 0.33.3+git20151011-7de61d8-rpi1 armhf [installed,local]
+libpng12-0/now 1.2.50-2+deb8u3 armhf [installed,local]
+libpng12-dev/now 1.2.50-2+deb8u3 armhf [installed,local]
+libpq-dev/now 9.4.18-0+deb8u1 armhf [installed,local]
+libpq5/now 9.4.18-0+deb8u1 armhf [installed,local]
+libprocps3/now 2:3.3.9-9+deb8u1 armhf [installed,local]
+libproxy1/now 0.4.11-4+b2 armhf [installed,local]
+libpsl0/now 0.5.1-1 armhf [installed,local]
+libpth20/now 2.0.7-20 armhf [installed,local]
+libpthread-stubs0-dev/now 0.3-4 armhf [installed,local]
+libpython-stdlib/now 2.7.9-1 armhf [installed,local]
+libpython2.7-minimal/now 2.7.9-2+deb8u1 armhf [installed,local]
+libpython2.7-stdlib/now 2.7.9-2+deb8u1 armhf [installed,local]
+libraspberrypi-bin/now 1.20180328-1~nokernel1~jessie armhf [installed,local]
+libraspberrypi0/now 1.20180328-1~nokernel1~jessie armhf [installed,local]
+libreadline-dev/now 6.3-8+b3 armhf [installed,local]
+libreadline6/now 6.3-8+b3 armhf [installed,local]
+libreadline6-dev/now 6.3-8+b3 armhf [installed,local]
+librest-0.7-0/now 0.7.92-3 armhf [installed,local]
+librsvg2-2/now 2.40.5-1+deb8u2 armhf [installed,local]
+librsvg2-common/now 2.40.5-1+deb8u2 armhf [installed,local]
+librsvg2-dev/now 2.40.5-1+deb8u2 armhf [installed,local]
+librtmp1/now 2.4+20150115.gita107cef-1+deb8u1 armhf [installed,local]
+libsasl2-2/now 2.1.26.dfsg1-13+deb8u1 armhf [installed,local]
+libsasl2-modules-db/now 2.1.26.dfsg1-13+deb8u1 armhf [installed,local]
+libselinux1/now 2.3-2 armhf [installed,local]
+libsemanage-common/now 2.3-1 all [installed,local]
+libsemanage1/now 2.3-1+b1 armhf [installed,local]
+libsepol1/now 2.3-2 armhf [installed,local]
+libserf-1-1/now 1.3.8-1 armhf [installed,local]
+libsigsegv2/now 2.10-4+b1 armhf [installed,local]
+libslang2/now 2.3.0-2 armhf [installed,local]
+libsm-dev/now 2:1.2.2-1+b1 armhf [installed,local]
+libsm6/now 2:1.2.2-1+b1 armhf [installed,local]
+libsmartcols1/now 2.25.2-6 armhf [installed,local]
+libsoup-gnome2.4-1/now 2.48.0-1+deb8u2 armhf [installed,local]
+libsoup2.4-1/now 2.48.0-1+deb8u2 armhf [installed,local]
+libsqlite3-0/now 3.8.7.1-1+deb8u4 armhf [installed,local]
+libsqlite3-dev/now 3.8.7.1-1+deb8u4 armhf [installed,local]
+libss2/now 1.42.12-2+b1 armhf [installed,local]
+libssh2-1/now 1.4.3-4.1+deb8u1 armhf [installed,local]
+libssl-dev/now 1.0.1t-1+deb8u8 armhf [installed,local]
+libssl1.0.0/now 1.0.1t-1+deb8u8 armhf [installed,local]
+libstdc++-4.9-dev/now 4.9.2-10+deb8u1 armhf [installed,local]
+libstdc++6/now 4.9.2-10+deb8u1 armhf [installed,local]
+libsvn1/now 1.8.10-6+deb8u6 armhf [installed,local]
+libsystemd0/now 215-17+deb8u7 armhf [installed,local]
+libtasn1-6/now 4.2-3+deb8u3 armhf [installed,local]
+libtext-charwidth-perl/now 0.04-7+b4 armhf [installed,local]
+libtext-iconv-perl/now 1.7-5+b2 armhf [installed,local]
+libtext-wrapi18n-perl/now 0.06-7 all [installed,local]
+libthai-data/now 0.1.21-1 all [installed,local]
+libthai0/now 0.1.21-1 armhf [installed,local]
+libtiff5/now 4.0.3-12.3+deb8u6 armhf [installed,local]
+libtiff5-dev/now 4.0.3-12.3+deb8u6 armhf [installed,local]
+libtiffxx5/now 4.0.3-12.3+deb8u6 armhf [installed,local]
+libtimedate-perl/now 2.3000-2 all [installed,local]
+libtinfo-dev/now 5.9+20140913-1+deb8u3 armhf [installed,local]
+libtinfo5/now 5.9+20140913-1+deb8u3 armhf [installed,local]
+libtool/now 2.4.2-1.11 all [installed,local]
+libubsan0/now 4.9.2-10+deb8u1 armhf [installed,local]
+libudev-dev/now 215-17+deb8u13 armhf [installed,local]
+libudev1/now 215-17+deb8u13 armhf [installed,local]
+libusb-0.1-4/now 2:0.1.12-25 armhf [installed,local]
+libusb-1.0-0/now 2:1.0.19-1 armhf [installed,local]
+libusb-1.0-0-dev/now 2:1.0.19-1 armhf [installed,local]
+libustr-1.0-1/now 1.0.4-3+b2 armhf [installed,local]
+libutempter0/now 1.1.5-4 armhf [installed,local]
+libuuid1/now 2.25.2-6 armhf [installed,local]
+libvpx1/now 1.3.0-3+rvt armhf [installed,local]
+libwacom-common/now 0.22-1 all [installed,local]
+libwacom2/now 0.22-1 armhf [installed,local]
+libwayland-client0/now 1.11.0-2 armhf [installed,local]
+libwayland-cursor0/now 1.11.0-2 armhf [installed,local]
+libwayland-server0/now 1.11.0-2 armhf [installed,local]
+libwmf-dev/now 0.2.8.4-10.3+deb8u2 armhf [installed,local]
+libwmf0.2-7/now 0.2.8.4-10.3+deb8u2 armhf [installed,local]
+libwrap0/now 7.6.q-25 armhf [installed,local]
+libx11-6/now 2:1.6.2-3+deb8u1 armhf [installed,local]
+libx11-data/now 2:1.6.2-3+deb8u1 all [installed,local]
+libx11-dev/now 2:1.6.2-3+deb8u1 armhf [installed,local]
+libx11-xcb1/now 2:1.6.2-3+deb8u2 armhf [installed,local]
+libxau-dev/now 1:1.0.8-1 armhf [installed,local]
+libxau6/now 1:1.0.8-1 armhf [installed,local]
+libxaw7/now 2:1.0.12-2+b1 armhf [installed,local]
+libxcb-dri2-0/now 1.10-3+b1 armhf [installed,local]
+libxcb-dri3-0/now 1.10-3+b1 armhf [installed,local]
+libxcb-glx0/now 1.10-3+b1 armhf [installed,local]
+libxcb-present0/now 1.10-3+b1 armhf [installed,local]
+libxcb-render0/now 1.10-3+b1 armhf [installed,local]
+libxcb-render0-dev/now 1.10-3+b1 armhf [installed,local]
+libxcb-shape0/now 1.10-3+b1 armhf [installed,local]
+libxcb-shm0/now 1.10-3+b1 armhf [installed,local]
+libxcb-shm0-dev/now 1.10-3+b1 armhf [installed,local]
+libxcb-sync1/now 1.10-3+b1 armhf [installed,local]
+libxcb-xfixes0/now 1.10-3+b1 armhf [installed,local]
+libxcb1/now 1.10-3+b1 armhf [installed,local]
+libxcb1-dev/now 1.10-3+b1 armhf [installed,local]
+libxcomposite1/now 1:0.4.4-1 armhf [installed,local]
+libxcursor1/now 1:1.1.14-1+deb8u2 armhf [installed,local]
+libxdamage1/now 1:1.1.4-2+b1 armhf [installed,local]
+libxdmcp-dev/now 1:1.1.1-1+b1 armhf [installed,local]
+libxdmcp6/now 1:1.1.1-1+b1 armhf [installed,local]
+libxdot4/now 2.38.0-7 armhf [installed,local]
+libxext-dev/now 2:1.3.3-1 armhf [installed,local]
+libxext6/now 2:1.3.3-1 armhf [installed,local]
+libxfixes3/now 1:5.0.1-2+deb8u1 armhf [installed,local]
+libxfont1/now 1:1.5.2-1 armhf [installed,local]
+libxft2/now 2.3.2-1 armhf [installed,local]
+libxi6/now 2:1.7.4-1+deb8u1 armhf [installed,local]
+libxinerama1/now 2:1.1.3-1+b1 armhf [installed,local]
+libxkbcommon0/now 0.4.3-2 armhf [installed,local]
+libxkbfile1/now 1:1.0.8-1 armhf [installed,local]
+libxml2/now 2.9.1+dfsg1-5+deb8u6 armhf [installed,local]
+libxml2-dev/now 2.9.1+dfsg1-5+deb8u6 armhf [installed,local]
+libxmu6/now 2:1.1.2-1 armhf [installed,local]
+libxmuu1/now 2:1.1.2-1 armhf [installed,local]
+libxpm4/now 1:3.5.12-0+deb8u1 armhf [installed,local]
+libxrandr2/now 2:1.4.2-1+deb8u1 armhf [installed,local]
+libxrender-dev/now 1:0.9.8-1+b1 armhf [installed,local]
+libxrender1/now 1:0.9.8-1+b1 armhf [installed,local]
+libxshmfence1/now 1.1-4+rpi1 armhf [installed,local]
+libxslt1-dev/now 1.1.28-2+deb8u3 armhf [installed,local]
+libxslt1.1/now 1.1.28-2+deb8u3 armhf [installed,local]
+libxss1/now 1:1.2.2-1 armhf [installed,local]
+libxt-dev/now 1:1.1.4-1+b1 armhf [installed,local]
+libxt6/now 1:1.1.4-1+b1 armhf [installed,local]
+libxtst6/now 2:1.2.2-1+deb8u1 armhf [installed,local]
+libxv-dev/now 2:1.0.10-1+deb8u1 armhf [installed,local]
+libxv1/now 2:1.0.10-1+deb8u1 armhf [installed,local]
+libxxf86dga1/now 2:1.1.4-1+b1 armhf [installed,local]
+libxxf86vm1/now 1:1.1.3-1+b1 armhf [installed,local]
+libyaml-0-2/now 0.1.6-3 armhf [installed,local]
+libyaml-dev/now 0.1.6-3 armhf [installed,local]
+linux-libc-dev/now 3.16.57-2 armhf [installed,local]
+login/now 1:4.2-3+deb8u4 armhf [installed,local]
+lsb-base/now 4.1+Debian13+nmu1 all [installed,local]
+m4/now 1.4.17-4 armhf [installed,local]
+make/now 4.0-8.1 armhf [installed,local]
+man-db/now 2.7.5-1~bpo8+1 armhf [installed,local]
+mawk/now 1.3.3-17 armhf [installed,local]
+mercurial/now 3.1.2-2+deb8u5 armhf [installed,local]
+mercurial-common/now 3.1.2-2+deb8u5 all [installed,local]
+mime-support/now 3.58 all [installed,local]
+mount/now 2.25.2-6 armhf [installed,local]
+multiarch-support/now 2.19-18+deb8u10 armhf [installed,local]
+mysql-common/now 5.5.60-0+deb8u1 all [installed,local]
+nano/now 2.2.6-3 armhf [installed,local]
+ncurses-base/now 5.9+20140913-1+deb8u3 all [installed,local]
+ncurses-bin/now 5.9+20140913-1+deb8u3 armhf [installed,local]
+net-tools/now 1.60-26+b1 armhf [installed,local]
+netbase/now 5.3 all [installed,local]
+ntpdate/now 1:4.2.6.p5+dfsg-7+deb8u2 armhf [installed,local]
+openssh-client/now 1:6.7p1-5+deb8u8 armhf [installed,local]
+openssh-server/now 1:6.7p1-5+deb8u8 armhf [installed,local]
+openssh-sftp-server/now 1:6.7p1-5+deb8u8 armhf [installed,local]
+openssl/now 1.0.1t-1+deb8u8 armhf [installed,local]
+passwd/now 1:4.2-3+deb8u4 armhf [installed,local]
+patch/now 2.7.5-1+deb8u1 armhf [installed,local]
+perl/now 5.20.2-3+deb8u11 armhf [installed,local]
+perl-base/now 5.20.2-3+deb8u11 armhf [installed,local]
+perl-modules/now 5.20.2-3+deb8u11 all [installed,local]
+pkg-config/now 0.28-1 armhf [installed,local]
+procps/now 2:3.3.9-9+deb8u1 armhf [installed,local]
+python/now 2.7.9-1 armhf [installed,local]
+python-bzrlib/now 2.6.0+bzr6595-6+deb8u1 armhf [installed,local]
+python-configobj/now 5.0.6-1 all [installed,local]
+python-minimal/now 2.7.9-1 armhf [installed,local]
+python-six/now 1.8.0-1 all [installed,local]
+python2.7/now 2.7.9-2+deb8u1 armhf [installed,local]
+python2.7-minimal/now 2.7.9-2+deb8u1 armhf [installed,local]
+raspberrypi-bootloader-nokernel/now 1.20180328-1~nokernel1~jessie armhf [installed,local]
+readline-common/now 6.3-8 all [installed,local]
+rfkill/now 0.5-1 armhf [installed,local]
+sed/now 4.2.2-4+deb8u1 armhf [installed,local]
+sensible-utils/now 0.0.9+deb8u1 all [installed,local]
+shared-mime-info/now 1.3-1 armhf [installed,local]
+sqlite3/now 3.8.7.1-1+deb8u4 armhf [installed,local]
+startpar/now 0.59-3 armhf [installed,local]
+subversion/now 1.8.10-6+deb8u6 armhf [installed,local]
+sudo/now 1.8.10p3-1+deb8u5 armhf [installed,local]
+systemd/now 215-17+deb8u7 armhf [installed,local]
+systemd-sysv/now 215-17+deb8u7 armhf [installed,local]
+sysv-rc/now 2.88dsf-59 all [installed,local]
+sysvinit-utils/now 2.88dsf-59 armhf [installed,local]
+tar/now 1.27.1-2+deb8u1 armhf [installed,local]
+tzdata/now 2018e-0+deb8u1 all [installed,local]
+ucf/now 3.0030 all [installed,local]
+udev/now 215-17+deb8u13 armhf [installed,local]
+usbutils/now 1:007-2 armhf [installed,local]
+util-linux/now 2.25.2-6 armhf [installed,local]
+wget/now 1.16-1+deb8u5 armhf [installed,local]
+x11-apps/now 7.7+4 armhf [installed,local]
+x11-common/now 1:7.7+16 all [installed,local]
+x11-session-utils/now 7.7+1 armhf [installed,local]
+x11-utils/now 7.7+2 armhf [installed,local]
+x11-xkb-utils/now 7.7+1 armhf [installed,local]
+x11-xserver-utils/now 7.7+3+b1 armhf [installed,local]
+x11proto-core-dev/now 7.0.31-1 all [installed,local]
+x11proto-input-dev/now 2.3.1-1 all [installed,local]
+x11proto-kb-dev/now 1.0.6-2 all [installed,local]
+x11proto-render-dev/now 2:0.11.1-2 all [installed,local]
+x11proto-video-dev/now 2.3.2-1 all [installed,local]
+x11proto-xext-dev/now 7.3.0-1 all [installed,local]
+xauth/now 1:1.0.9-1 armhf [installed,local]
+xbitmaps/now 1.1.1-2 all [installed,local]
+xfonts-100dpi/now 1:1.0.3 all [installed,local]
+xfonts-75dpi/now 1:1.0.3 all [installed,local]
+xfonts-base/now 1:1.0.3 all [installed,local]
+xfonts-encodings/now 1:1.0.4-2 all [installed,local]
+xfonts-scalable/now 1:1.0.3-1 all [installed,local]
+xfonts-utils/now 1:7.7+2 armhf [installed,local]
+xinit/now 1.3.4-1 armhf [installed,local]
+xkb-data/now 2.12-1 all [installed,local]
+xorg/now 1:7.7+7+b1 armhf [installed,local]
+xorg-docs-core/now 1:1.7-1 all [installed,local]
+xorg-sgml-doctools/now 1:1.11-1 all [installed,local]
+xserver-common/now 2:1.18.4-2+rpi1 all [installed,local]
+xserver-xorg/now 1:7.7+16 armhf [installed,local]
+xserver-xorg-core/now 2:1.18.4-2+rpi1 armhf [installed,local]
+xserver-xorg-input-all/now 1:7.7+16 armhf [installed,local]
+xserver-xorg-input-libinput/now 0.20.0-1 armhf [installed,local]
+xserver-xorg-video-fbturbo/now 1.20161111~122359 armhf [installed,local]
+xterm/now 312-2 armhf [installed,local]
+xtrans-dev/now 1.3.5-1 all [installed,local]
+xz-utils/now 5.1.1alpha+20120614-2+b3 armhf [installed,local]
+zlib1g/now 1:1.2.8.dfsg-2+b1 armhf [installed,local]
+zlib1g-dev/now 1:1.2.8.dfsg-2+b1 armhf [installed,local]
+
+
+
+E: Version '1:7.7+7+b1' for 'xorg' was not found
+
+xinit=1.3.4-1 \
+libgtk-3-0=3.14.5-1+deb8u1rpi1rpi1g \
+libudev-dev=215-17+deb8u7 \
+libxss1=1:1.2.2-1 \
+libgconf-2-4=3.2.6-3 \
+libasound2=1.0.28-1+rpi3 \
+sqlite3=3.8.7.1-1+deb8u2 \
+openssh-client=1:6.7p1-5+deb8u4 \
+openssh-sftp-server=1:6.7p1-5+deb8u4 \
+openssh-server=1:6.7p1-5+deb8u4 \
+ntpdate=1:4.2.6.p5+dfsg-7+deb8u2 \
+hostapd=1:2.3-1+deb8u5 \
+dnsmasq=2.72-3+deb8u2 \
+iproute2=3.16.0-2 \
+iw=3.17-1 \
+libdbus-1-dev=1.8.22-0+deb8u1 \
+libexpat1-dev=2.1.0-6+deb8u4 \
+rfkill=0.5-1 \
+gifsicle=1.86-1+deb8u1 \
+libusb-1.0-0-dev=2:1.0.19-1 \
+libnss3 \
+libxv-dev=2:1.0.10-1+deb8u1 \
+libtool=2.4.2-1.11 \
+## build tools
+build-essential=11.7 \
+automake=1:1.14.1-4+deb8u1 \
+cmake=3.6.2-2~bpo8+1 \

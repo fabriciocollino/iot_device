@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en-us" id="extr-page">
+<head>
+	<meta charset="utf-8">
+	<title>enPunto, configuración Wi-Fi</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+	<!-- Basic Styles -->
+	<link rel="stylesheet" type="text/css" media="screen" href="css/bootstrap.min.css">
+	<link rel="stylesheet" type="text/css" media="screen" href="css/font-awesome.min.css">
+	<link rel="stylesheet" type="text/css" media="screen" href="css/smartadmin-production-plugins.min.css">
+	<link rel="stylesheet" type="text/css" media="screen" href="css/smartadmin-production.min.css">
+	<link rel="stylesheet" type="text/css" media="screen" href="css/smartadmin-skins.min.css">
+	<link rel="stylesheet" type="text/css" media="screen" href="css/style.css"/>
+
+
+
+	<link rel="shortcut icon" href="img/favicon/favicon.ico" type="image/x-icon">
+	<link rel="icon" href="img/favicon/favicon.ico" type="image/x-icon">
+
+
+
+	<script src="/bower_components/jquery/dist/jquery.min.js"></script>
+	<script src="/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+	<script src="/js/index.js"></script>
+</head>
+
+<body class="animated fadeInDown">
+<header id="header">
+
+	<div id="logo-group">
+		<span id="logo"> <img src="img/logo_flat.png" alt="enPunto"> </span>
+	</div>
+</header>
+
+<div id="main" role="main">
+
+
+	<!-- MAIN CONTENT -->
+
+	<div id="content" class="container">
+
+
+		<div class="row centered before-submit">
+
+
+			<div class="col-xs-12 col-sm-12 col-md-5 col-lg-4 center-block" style="float:none;">
+
+				<h1 class="txt-color-red login-header-big" style="padding-left: 10px;">&nbsp;
+					<span style="font-size:19px;"></span>
+				</h1>
+
+				<div class="well no-padding">
+
+
+
+							<form action="/connect" id="connect-form" class="smart-form client-form" method="post">
+
+								<header>Conexión a Internet</header>
+
+								<fieldset>
+
+
+									<!-- SSID text SECTION -->
+									<section id="text-list-networks">
+										<label class="label">Selecciona una red Wi-Fi</label>
+										<label class="input"> <span class="icon-prepend fa fa-wifi"></span>
+										<input id='text-ssid' type='text' class="form-control" name='ssid-B' placeholder="Escriba el nombre de la red"></input>
+										<i></i> </label>
+									</section>
+
+									<!-- SSID select SECTION -->
+									<section id="select-list-networks">
+										<label class="label">Selecciona una red Wi-Fi</label>
+										<label class="select"> <span class="icon-prepend fa fa-wifi"></span>
+										<select id='select-ssid' class="form-control" name='ssid' style="padding-left: 35px;"></select>
+										<i></i> </label>
+									</section>
+
+									
+												
+										
+									<!-- SSID checkbox SECTION -->
+									<section >
+										<label for="type-checkbox-ssid">
+												<input type="checkbox" id="type-checkbox-ssid">	&nbsp;Conectarse a otra red</input>
+										</label>
+									</section>
+															<!-- password-->
+									<section>
+										<label class="label">Contraseña</label>
+										<label class="input"> <i class="icon-prepend fa fa-lock"></i>
+												<input id='field-password' type='text' class="form-control" name='passphrase'>			
+												</input>		
+										</label>
+									</section>
+							
+								</fieldset>
+
+								<footer>
+									<button type="submit" class="btn btn-primary" name="btnLogin">Guardar</button>
+								</footer>
+								
+							</form>
+				</div>
+			</div>
+		</div>
+
+		<div class="row hidden" id='submit-message'>
+			<div class="col-lg-8 col-lg-offset-2">
+				<h3>Aplicando configuración...</h3>
+				<p>El dispositivo pronto se desconectará. Si la nueva conexión es exitosa verá un nuevo mensaje en la pantalla</p>
+			</div>
+		</div>
+		<div class="row hidden" id='no-networks-message'>
+			<div class="col-lg-8 col-lg-offset-2">
+				<h3>No hay redes Wi-Fi disponibles</h3>
+				<p>Por favor, chequea que haya redes al alcance y reinicia el lector.</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+</body>
+</html>
